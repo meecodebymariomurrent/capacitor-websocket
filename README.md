@@ -1,6 +1,12 @@
-# websocket
+# @meecode/capacitor-websocket
 
 Basic, cross-platform native websocket implementation for Capacitor/Ionic.
+
+> **Credits:** This package is a maintained fork of
+> [`@miaz/capacitor-websocket`](https://github.com/mia-z/capacitor-websocket), originally created by
+> **Ryan Cockram ([mia-z](https://github.com/mia-z))**. Thanks to Ryan for the original work, and to
+> Martin Loeper ([nesto-software](https://github.com/nesto-software)) for his contributions.
+> Updated for Capacitor 8 and maintained by [Meecode](https://meecode.at).
 
 - iOS/Swift implmentation uses [StarScream](/https://github.com/daltoniam/Starscream)
 - Android/Java uses [NV/NeoVisionaries Websocket Client](/https://github.com/TakahikoKawasaki/nv-websocket-client)
@@ -391,3 +397,10 @@ addListener<T extends string>(eventName: `${T}:textmessage`, listenerFunc: (even
 <code>{ data: string }</code>
 
 </docgen-api>
+
+## Credits & License
+
+Originally created by [Ryan Cockram (mia-z)](https://github.com/mia-z) as
+[`@miaz/capacitor-websocket`](https://github.com/mia-z/capacitor-websocket). Contributions by
+Martin Loeper. Maintained by Meecode. Released under the [MIT License](LICENSE) — the original
+copyright notice is retained.

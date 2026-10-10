@@ -17,7 +17,7 @@
   ],
   "author": "Meecode <mario.murrent@meecode.at>",
   "contributors": [
-    "Ryan (original author, mia-z/capacitor-websocket)",
+    "Ryan Cockram <https://github.com/mia-z> (original author)",
     "Martin Loeper <martin.loeper@nesto-software.de>"
   ],
   "license": "MIT",
