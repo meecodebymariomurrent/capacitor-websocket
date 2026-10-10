@@ -23,7 +23,11 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
         
         if let headers = call.getObject("headers") {
             for (key, value) in headers {
-                req.addValue(value as! String, forHTTPHeaderField: key)
+                guard let headerValue = value as? String else {
+                    call.reject("Header '\(key)' must be a string")
+                    return
+                }
+                req.addValue(headerValue, forHTTPHeaderField: key)
             }
         }
         
@@ -38,13 +42,13 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
     }
 
     @objc public func connect(_ call: CAPPluginCall) {
-        guard var connection = getSocket(call) else { return }
+        guard let connection = getSocket(call) else { return }
         connection.connect()
         call.resolve()
     }
 
     @objc public func disconnect(_ call: CAPPluginCall) {
-        guard var connection = getSocket(call) else { return }
+        guard let connection = getSocket(call) else { return }
         connection.disconnect()
         call.resolve()
     }
@@ -55,8 +59,13 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
             call.reject("Must provide data to send")
             return
         }
-        connection.socket?.write(string: message)
-        call.resolve()
+        guard let socket = connection.socket else {
+            call.reject("Socket is not available")
+            return
+        }
+        socket.write(string: message) {
+            call.resolve()
+        }
     }
 
     private func getSocket(_ call: CAPPluginCall) -> SocketConnection? {

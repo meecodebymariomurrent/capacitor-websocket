@@ -1,4 +1,4 @@
-package xyz.miaz.capacitorwebsocket;
+package at.meecode.capacitorwebsocket;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -7,7 +7,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.neovisionaries.ws.client.*;
 
-import java.io.IOException;
+import org.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -18,7 +19,7 @@ public class CapacitorWebsocket extends Plugin {
     private HashMap<String, SocketConnection> sockets = new HashMap<>();
 
     @PluginMethod()
-    public void build(PluginCall call) throws IOException {
+    public void build(PluginCall call) {
         try {
             String name = call.getString("name");
             if (name == null || name.equals("")) {
@@ -36,17 +37,17 @@ public class CapacitorWebsocket extends Plugin {
             socket.clearHeaders();
 
             JSObject json = call.getObject("headers");
-            for (Iterator<String> i = json.keys(); i.hasNext ();) {
-                String key = i.next();
-                Object val = json.get(key);
-                socket.addHeader(key, (String) val);
-                System.out.println(String.format("key: %s, value: %s", key, val));
+            if (json != null) {
+                for (Iterator<String> i = json.keys(); i.hasNext();) {
+                    String key = i.next();
+                    socket.addHeader(key, String.valueOf(json.get(key)));
+                }
             }
 
             sockets.put(name, new SocketConnection(socket, name));
             call.resolve();
         } catch (Exception e) {
-            call.reject("Couldnt create socket");
+            call.reject("Couldnt create socket", e);
         }
     }
 
@@ -74,8 +75,8 @@ public class CapacitorWebsocket extends Plugin {
                 //super.onStateChanged(websocket, newState);
                 System.out.println(newState);
                 JSObject ret = new JSObject();
-                ret.put("state", newState);
-                notifyListeners(String.format("%s:statechanged", socket.name), ret);
+                ret.put("state", newState.toString());
+                notifyListeners(String.format("%s:statechange", socket.name), ret);
             }
 
             @Override
@@ -83,7 +84,7 @@ public class CapacitorWebsocket extends Plugin {
                 //super.onCloseFrame(websocket, frame);
                 System.out.println("close frame");
                 JSObject ret = new JSObject();
-                ret.put("frame", frame);
+                ret.put("frame", String.valueOf(frame));
                 notifyListeners(String.format("%s:closeframe", socket.name), ret);
             }
 
@@ -92,7 +93,7 @@ public class CapacitorWebsocket extends Plugin {
                 //super.onConnected(websocket, headers);
                 System.out.println("connected");
                 JSObject ret = new JSObject();
-                ret.put("headers", headers);
+                ret.put("headers", new JSObject(new JSONObject(headers).toString()));
                 notifyListeners(String.format("%s:connected", socket.name), ret);
             }
 
@@ -102,8 +103,8 @@ public class CapacitorWebsocket extends Plugin {
                 System.out.println("disconnected");
                 JSObject ret = new JSObject();
                 ret.put("closedByServer", closedByServer);
-                ret.put("serverCloseFrame", serverCloseFrame);
-                ret.put("clientCloseFrame", clientCloseFrame);
+                ret.put("serverCloseFrame", String.valueOf(serverCloseFrame));
+                ret.put("clientCloseFrame", String.valueOf(clientCloseFrame));
                 notifyListeners(String.format("%s:disconnected", socket.name), ret);
             }
 
@@ -111,7 +112,7 @@ public class CapacitorWebsocket extends Plugin {
             public void onConnectError(WebSocket websocket, WebSocketException exception) throws Exception {
                 //super.onConnectError(websocket, exception);
                 JSObject ret = new JSObject();
-                ret.put("exception", exception);
+                ret.put("exception", String.valueOf(exception));
                 notifyListeners(String.format("%s:connecterror", socket.name), ret);
             }
 
@@ -119,7 +120,7 @@ public class CapacitorWebsocket extends Plugin {
             public void onError(WebSocket websocket, WebSocketException cause) throws Exception {
                 //super.onError(websocket, cause);
                 JSObject ret = new JSObject();
-                ret.put("cause", cause);
+                ret.put("cause", String.valueOf(cause));
                 notifyListeners(String.format("%s:error", socket.name), ret);
             }
 
@@ -127,8 +128,8 @@ public class CapacitorWebsocket extends Plugin {
             public void onMessageError(WebSocket websocket, WebSocketException cause, List<WebSocketFrame> frames) throws Exception {
                 //super.onMessageError(websocket, cause, frames);
                 JSObject ret = new JSObject();
-                ret.put("cause", cause);
-                ret.put("frame", frames);
+                ret.put("cause", String.valueOf(cause));
+                ret.put("frame", String.valueOf(frames));
                 notifyListeners(String.format("%s:messageerror", socket.name), ret);
             }
 
@@ -136,8 +137,8 @@ public class CapacitorWebsocket extends Plugin {
             public void onSendError(WebSocket websocket, WebSocketException cause, WebSocketFrame frame) throws Exception {
                 //super.onSendError(websocket, cause, frame);
                 JSObject ret = new JSObject();
-                ret.put("cause", cause);
-                ret.put("frame", frame);
+                ret.put("cause", String.valueOf(cause));
+                ret.put("frame", String.valueOf(frame));
                 notifyListeners(String.format("%s:senderror", socket.name), ret);
             }
 
@@ -145,7 +146,7 @@ public class CapacitorWebsocket extends Plugin {
             public void onTextMessage(WebSocket websocket, byte[] data) throws Exception {
                 //super.onTextMessage(websocket, data);
                 JSObject ret = new JSObject();
-                ret.put("data", data);
+                ret.put("data", new String(data, java.nio.charset.StandardCharsets.UTF_8));
                 notifyListeners(String.format("%s:textmessage", socket.name), ret);
             }
 
@@ -153,8 +154,8 @@ public class CapacitorWebsocket extends Plugin {
             public void onTextMessageError(WebSocket websocket, WebSocketException cause, byte[] data) throws Exception {
                 //super.onTextMessageError(websocket, cause, data);
                 JSObject ret = new JSObject();
-                ret.put("data", data);
-                ret.put("cause", cause);
+                ret.put("data", new String(data, java.nio.charset.StandardCharsets.UTF_8));
+                ret.put("cause", String.valueOf(cause));
                 notifyListeners(String.format("%s:textmessageerror", socket.name), ret);
             }
         });
@@ -162,7 +163,7 @@ public class CapacitorWebsocket extends Plugin {
     }
 
     @PluginMethod()
-    public void connect(PluginCall call) throws WebSocketException {
+    public void connect(PluginCall call) {
         SocketConnection socket = getSocket(call);
         if (socket == null) {
             call.reject("Must provide a socket name");
@@ -170,8 +171,13 @@ public class CapacitorWebsocket extends Plugin {
         }
 
         if (!socket.connected) {
-            socket.socket.connect();
-            socket.connected = true;
+            try {
+                socket.socket.connect();
+                socket.connected = true;
+            } catch (WebSocketException e) {
+                call.reject("Couldnt connect socket: " + e.getMessage(), e);
+                return;
+            }
         }
         call.resolve();
     }
@@ -199,7 +205,13 @@ public class CapacitorWebsocket extends Plugin {
             return;
         }
 
-        socket.socket.sendText(call.getString("data"));
+        String data = call.getString("data");
+        if (data == null) {
+            call.reject("Must provide data to send");
+            return;
+        }
+
+        socket.socket.sendText(data);
         call.resolve();
     }
 

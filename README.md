@@ -9,7 +9,7 @@ Basic, cross-platform native websocket implementation for Capacitor/Ionic.
 ## Install
 
 ```bash
-npm install @miaz/capacitor-websocket
+npm install @meecode/capacitor-websocket
 npx cap sync
 ```
 
@@ -33,17 +33,17 @@ addListener<EventSourceNames>("live:message", ...);
 * [`send(...)`](#send)
 * [`applyListeners(...)`](#applylisteners)
 * [`build(...)`](#build)
-* [`addListener(`${T}:message`, ...)`](#addlistenertmessage)
-* [`addListener(`${T}:connected`, ...)`](#addlistenertconnected)
-* [`addListener(`${T}:disconnected`, ...)`](#addlistenertdisconnected)
-* [`addListener(`${T}:statechange`, ...)`](#addlistenertstatechange)
-* [`addListener(`${T}:closeframe`, ...)`](#addlistenertcloseframe)
-* [`addListener(`${T}:connecterror`, ...)`](#addlistenertconnecterror)
-* [`addListener(`${T}:error`, ...)`](#addlistenerterror)
-* [`addListener(`${T}:messageerror`, ...)`](#addlistenertmessageerror)
-* [`addListener(`${T}:senderror`, ...)`](#addlistenertsenderror)
-* [`addListener(`${T}:textmessageerror`, ...)`](#addlistenerttextmessageerror)
-* [`addListener(`${T}:textmessage`, ...)`](#addlistenerttextmessage)
+* [`addListener(`${T}:message`, ...)`](#addlistenertmessage-)
+* [`addListener(`${T}:connected`, ...)`](#addlistenertconnected-)
+* [`addListener(`${T}:disconnected`, ...)`](#addlistenertdisconnected-)
+* [`addListener(`${T}:statechange`, ...)`](#addlistenertstatechange-)
+* [`addListener(`${T}:closeframe`, ...)`](#addlistenertcloseframe-)
+* [`addListener(`${T}:connecterror`, ...)`](#addlistenertconnecterror-)
+* [`addListener(`${T}:error`, ...)`](#addlistenerterror-)
+* [`addListener(`${T}:messageerror`, ...)`](#addlistenertmessageerror-)
+* [`addListener(`${T}:senderror`, ...)`](#addlistenertsenderror-)
+* [`addListener(`${T}:textmessageerror`, ...)`](#addlistenerttextmessageerror-)
+* [`addListener(`${T}:textmessage`, ...)`](#addlistenerttextmessage-)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 
@@ -120,7 +120,7 @@ build(options: BuildOptions) => Promise<void>
 ### addListener(`${T}:message`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:message`, listenerFunc: (event: MessageEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:message`, listenerFunc: (event: MessageEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                      |
@@ -128,7 +128,7 @@ addListener<T extends string>(eventName: `${T}:message`, listenerFunc: (event: M
 | **`eventName`**    | <code>`${T}:message`</code>                                               |
 | **`listenerFunc`** | <code>(event: <a href="#messageevent">MessageEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -136,7 +136,7 @@ addListener<T extends string>(eventName: `${T}:message`, listenerFunc: (event: M
 ### addListener(`${T}:connected`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:connected`, listenerFunc: (event: ConnectedEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:connected`, listenerFunc: (event: ConnectedEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                          |
@@ -144,7 +144,7 @@ addListener<T extends string>(eventName: `${T}:connected`, listenerFunc: (event:
 | **`eventName`**    | <code>`${T}:connected`</code>                                                 |
 | **`listenerFunc`** | <code>(event: <a href="#connectedevent">ConnectedEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -152,7 +152,7 @@ addListener<T extends string>(eventName: `${T}:connected`, listenerFunc: (event:
 ### addListener(`${T}:disconnected`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:disconnected`, listenerFunc: (event: DisconnectedEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:disconnected`, listenerFunc: (event: DisconnectedEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                                |
@@ -160,7 +160,7 @@ addListener<T extends string>(eventName: `${T}:disconnected`, listenerFunc: (eve
 | **`eventName`**    | <code>`${T}:disconnected`</code>                                                    |
 | **`listenerFunc`** | <code>(event: <a href="#disconnectedevent">DisconnectedEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -168,7 +168,7 @@ addListener<T extends string>(eventName: `${T}:disconnected`, listenerFunc: (eve
 ### addListener(`${T}:statechange`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:statechange`, listenerFunc: (event: StateChangedEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:statechange`, listenerFunc: (event: StateChangedEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                                |
@@ -176,7 +176,7 @@ addListener<T extends string>(eventName: `${T}:statechange`, listenerFunc: (even
 | **`eventName`**    | <code>`${T}:statechange`</code>                                                     |
 | **`listenerFunc`** | <code>(event: <a href="#statechangedevent">StateChangedEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -184,7 +184,7 @@ addListener<T extends string>(eventName: `${T}:statechange`, listenerFunc: (even
 ### addListener(`${T}:closeframe`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:closeframe`, listenerFunc: (event: CloseFrameEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:closeframe`, listenerFunc: (event: CloseFrameEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                            |
@@ -192,7 +192,7 @@ addListener<T extends string>(eventName: `${T}:closeframe`, listenerFunc: (event
 | **`eventName`**    | <code>`${T}:closeframe`</code>                                                  |
 | **`listenerFunc`** | <code>(event: <a href="#closeframeevent">CloseFrameEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -200,7 +200,7 @@ addListener<T extends string>(eventName: `${T}:closeframe`, listenerFunc: (event
 ### addListener(`${T}:connecterror`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:connecterror`, listenerFunc: (event: ConnectErrorEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:connecterror`, listenerFunc: (event: ConnectErrorEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                                |
@@ -208,7 +208,7 @@ addListener<T extends string>(eventName: `${T}:connecterror`, listenerFunc: (eve
 | **`eventName`**    | <code>`${T}:connecterror`</code>                                                    |
 | **`listenerFunc`** | <code>(event: <a href="#connecterrorevent">ConnectErrorEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -216,7 +216,7 @@ addListener<T extends string>(eventName: `${T}:connecterror`, listenerFunc: (eve
 ### addListener(`${T}:error`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:error`, listenerFunc: (event: ErrorEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:error`, listenerFunc: (event: ErrorEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                  |
@@ -224,7 +224,7 @@ addListener<T extends string>(eventName: `${T}:error`, listenerFunc: (event: Err
 | **`eventName`**    | <code>`${T}:error`</code>                                             |
 | **`listenerFunc`** | <code>(event: <a href="#errorevent">ErrorEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -232,7 +232,7 @@ addListener<T extends string>(eventName: `${T}:error`, listenerFunc: (event: Err
 ### addListener(`${T}:messageerror`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:messageerror`, listenerFunc: (event: MessageErrorEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:messageerror`, listenerFunc: (event: MessageErrorEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                                |
@@ -240,7 +240,7 @@ addListener<T extends string>(eventName: `${T}:messageerror`, listenerFunc: (eve
 | **`eventName`**    | <code>`${T}:messageerror`</code>                                                    |
 | **`listenerFunc`** | <code>(event: <a href="#messageerrorevent">MessageErrorEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -248,7 +248,7 @@ addListener<T extends string>(eventName: `${T}:messageerror`, listenerFunc: (eve
 ### addListener(`${T}:senderror`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:senderror`, listenerFunc: (event: SendErrorEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:senderror`, listenerFunc: (event: SendErrorEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                          |
@@ -256,7 +256,7 @@ addListener<T extends string>(eventName: `${T}:senderror`, listenerFunc: (event:
 | **`eventName`**    | <code>`${T}:senderror`</code>                                                 |
 | **`listenerFunc`** | <code>(event: <a href="#senderrorevent">SendErrorEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -264,7 +264,7 @@ addListener<T extends string>(eventName: `${T}:senderror`, listenerFunc: (event:
 ### addListener(`${T}:textmessageerror`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:textmessageerror`, listenerFunc: (event: TextMessageErrorEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:textmessageerror`, listenerFunc: (event: TextMessageErrorEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                                        |
@@ -272,7 +272,7 @@ addListener<T extends string>(eventName: `${T}:textmessageerror`, listenerFunc: 
 | **`eventName`**    | <code>`${T}:textmessageerror`</code>                                                        |
 | **`listenerFunc`** | <code>(event: <a href="#textmessageerrorevent">TextMessageErrorEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 
@@ -280,7 +280,7 @@ addListener<T extends string>(eventName: `${T}:textmessageerror`, listenerFunc: 
 ### addListener(`${T}:textmessage`, ...)
 
 ```typescript
-addListener<T extends string>(eventName: `${T}:textmessage`, listenerFunc: (event: TextMessageEvent) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<T extends string>(eventName: `${T}:textmessage`, listenerFunc: (event: TextMessageEvent) => void) => Promise<PluginListenerHandle>
 ```
 
 | Param              | Type                                                                              |
@@ -288,7 +288,7 @@ addListener<T extends string>(eventName: `${T}:textmessage`, listenerFunc: (even
 | **`eventName`**    | <code>`${T}:textmessage`</code>                                                   |
 | **`listenerFunc`** | <code>(event: <a href="#textmessageevent">TextMessageEvent</a>) =&gt; void</code> |
 
-**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
 
 --------------------
 

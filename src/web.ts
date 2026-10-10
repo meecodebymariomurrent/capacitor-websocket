@@ -1,7 +1,12 @@
 import { WebPlugin } from "@capacitor/core";
-import { SocketMetadata } from "./definitions";
 
-import type { BuildOptions, CapacitorWebsocketPlugin, OptionsBase, SendOptions } from "./definitions";
+import type {
+    BuildOptions,
+    CapacitorWebsocketPlugin,
+    OptionsBase,
+    SendOptions,
+    SocketMetadata,
+} from "./definitions";
 
 export class CapacitorWebsocketPluginWeb extends WebPlugin implements CapacitorWebsocketPlugin {
     private sockets: SocketMetadata[] = [];
@@ -11,47 +16,48 @@ export class CapacitorWebsocketPluginWeb extends WebPlugin implements CapacitorW
         const sockMeta = this.getSocketMetadata(sIndex);
 
         console.log(sockMeta.name + " is connecting");
-        let count = 0;
         const s = new WebSocket(sockMeta.url);
 
-        s.onclose = () => {
+        s.onclose = (ev: CloseEvent) => {
             console.log(`${sockMeta.name} is closing.`);
-            this.notifyListeners(`${options.name}:disconnected`, null);
+            this.notifyListeners(`${options.name}:disconnected`, {
+                closedByServer: sockMeta.connected, // disconnect() clears the flag before closing
+                serverCloseFrame: ev.reason,
+                clientCloseFrame: "",
+            });
             sockMeta.connected = false;
             sockMeta.socket = null;
-        }
+        };
 
-        s.onerror = (err) => {
-            this.notifyListeners(`${options.name}:error`, err);
-        }
+        s.onerror = () => {
+            this.notifyListeners(`${options.name}:error`, { cause: "WebSocket error" });
+        };
 
-        s.onmessage = (data: any) => {
-            this.notifyListeners(`${options.name}:message`, data);
-        }
+        s.onmessage = (ev: MessageEvent) => {
+            this.notifyListeners(`${options.name}:message`, { data: ev.data });
+        };
 
-        s.onopen = (data: Event) => {
-            this.notifyListeners(`${options.name}:connected`, data);
-        }
+        // Wait for the socket to open (or fail / time out) instead of polling readyState.
+        await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                s.close();
+                reject(new Error("Socket timeout (10s)"));
+            }, 10000);
 
-        while(s.readyState === 0 || count < 20) {
-            await timeout(500);
-            count++;
-            if (count > 19 || s.readyState !== 0) break;
-        }
+            s.onopen = () => {
+                clearTimeout(timer);
+                resolve();
+            };
+            s.addEventListener("error", () => {
+                clearTimeout(timer);
+                reject(new Error("Couldnt build websocket connection with name: " + options.name));
+            }, { once: true });
+        });
 
-        if (count === 20) {
-            throw new Error("Socket timeout (10s)");
-        }
-
-        if (s.readyState === s.OPEN) {
-            console.log(`${sockMeta.name} connected.`);
-            sockMeta.connected = true;
-            sockMeta.socket = s;
-            this.notifyListeners(`${options.name}:connected`, null);
-            return;
-        }
-
-        throw new Error("Couldnt build websocket connection with name: " + options.name);
+        console.log(`${sockMeta.name} connected.`);
+        sockMeta.connected = true;
+        sockMeta.socket = s;
+        this.notifyListeners(`${options.name}:connected`, { headers: {} });
     }
 
     async disconnect(options: OptionsBase): Promise<void> {
@@ -108,5 +114,3 @@ export class CapacitorWebsocketPluginWeb extends WebPlugin implements CapacitorW
         return this.sockets.indexOf(socketToFind);
     }
 }
-
-const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

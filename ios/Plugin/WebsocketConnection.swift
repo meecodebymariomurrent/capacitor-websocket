@@ -35,7 +35,8 @@ class SocketConnection {
     }
     
     public func bind() {
-        socket?.onEvent = { event in
+        socket?.onEvent = { [weak self] event in
+            guard let self = self else { return }
             switch event {
                 case .connected(_):
                     self.connected = true
@@ -46,7 +47,7 @@ class SocketConnection {
                 case .text(let string):
                     self.pluginContext.notifyListeners("\(self.name):message", data: ["data": string])
                 case .binary(let data):
-                    self.pluginContext.notifyListeners("\(self.name):message", data: ["data": data])
+                    self.pluginContext.notifyListeners("\(self.name):message", data: ["data": data.base64EncodedString(), "binary": true])
                 case .ping(_):
                     break
                 case .pong(_):
@@ -59,7 +60,7 @@ class SocketConnection {
                     self.connected = false
                 case .error(let error):
                     self.connected = false
-                    self.pluginContext.notifyListeners("\(self.name):error", data: ["cause": error ?? "Unknown Error"])
+                    self.pluginContext.notifyListeners("\(self.name):error", data: ["cause": error?.localizedDescription ?? "Unknown Error"])
                 case .peerClosed:
                     self.pluginContext.notifyListeners("\(self.name):message", data: ["data": "Peer closed"])
             }
