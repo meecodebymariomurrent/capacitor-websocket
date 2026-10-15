@@ -1,10 +1,9 @@
 {
   "name": "@meecode/capacitor-websocket",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Basic websocket for capacitor",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
-  "type": "module",
   "types": "dist/esm/index.d.ts",
   "unpkg": "dist/plugin.js",
   "files": [

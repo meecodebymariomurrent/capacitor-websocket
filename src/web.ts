@@ -6,7 +6,7 @@ import type {
     OptionsBase,
     SendOptions,
     SocketMetadata,
-} from "./definitions";
+} from "./definitions.js";
 
 export class CapacitorWebsocketPluginWeb extends WebPlugin implements CapacitorWebsocketPlugin {
     private sockets: SocketMetadata[] = [];
