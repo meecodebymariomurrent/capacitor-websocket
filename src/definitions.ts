@@ -1,7 +1,8 @@
 import type { PluginListenerHandle, Plugin } from "@capacitor/core";
 
 export type MessageEvent = {
-    data: string
+    data: string,
+    binary?: boolean
 }
 
 export type StateChangedEvent = {
@@ -63,7 +64,7 @@ export type BuildOptions = OptionsBase & {
 }
 
 export type SendOptions = OptionsBase & {
-    data: any
+    data: string
 }
 
 export type ConnectOptions = OptionsBase;
@@ -85,9 +86,12 @@ export interface CapacitorWebsocketPlugin extends Plugin {
     addListener<T extends string>(eventName: `${T}:closeframe`,listenerFunc: (event: CloseFrameEvent) => void): Promise<PluginListenerHandle>;
     addListener<T extends string>(eventName: `${T}:connecterror`,listenerFunc: (event: ConnectErrorEvent) => void): Promise<PluginListenerHandle>;
     addListener<T extends string>(eventName: `${T}:error`,listenerFunc: (event: ErrorEvent) => void): Promise<PluginListenerHandle>;
+    /** @deprecated Never emitted anymore (only the legacy Android implementation did). */
     addListener<T extends string>(eventName: `${T}:messageerror`,listenerFunc: (event: MessageErrorEvent) => void): Promise<PluginListenerHandle>;
     addListener<T extends string>(eventName: `${T}:senderror`,listenerFunc: (event: SendErrorEvent) => void): Promise<PluginListenerHandle>;
+    /** @deprecated Never emitted anymore (only the legacy Android implementation did). */
     addListener<T extends string>(eventName: `${T}:textmessageerror`,listenerFunc: (event: TextMessageErrorEvent) => void): Promise<PluginListenerHandle>;
+    /** @deprecated Never emitted anymore (only the legacy Android implementation did). */
     addListener<T extends string>(eventName: `${T}:textmessage`,listenerFunc: (event: TextMessageEvent) => void): Promise<PluginListenerHandle>;
 }
 

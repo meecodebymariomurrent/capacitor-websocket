@@ -1,10 +1,14 @@
 import Foundation
 import Capacitor
-import Network
 import Starscream
+
 @objc(CapacitorWebsocketPlugin)
 public class CapacitorWebsocketPlugin: CAPPlugin {
     var connections: [String: SocketConnection] = [:]
+
+    deinit {
+        connections.values.forEach { $0.dispose() }
+    }
 
     @objc public func build(_ call: CAPPluginCall) {
         guard let url = call.getString("url") else {
@@ -17,10 +21,13 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
             return
         }
 
-        guard let socketURL = URL(string: url) else { call.reject("Couldnt make socket: url parse error"); return }
+        guard let socketURL = URL(string: url) else {
+            call.reject("Couldnt make socket: url parse error")
+            return
+        }
 
-        var req = URLRequest(url: socketURL);
-        
+        var req = URLRequest(url: socketURL)
+
         if let headers = call.getObject("headers") {
             for (key, value) in headers {
                 guard let headerValue = value as? String else {
@@ -30,8 +37,9 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
                 req.addValue(headerValue, forHTTPHeaderField: key)
             }
         }
-        
-        connections[name] = SocketConnection.init(name: name, plugin: self, request: req)
+
+        connections[name]?.dispose()
+        connections[name] = SocketConnection(name: name, plugin: self, request: req)
         call.resolve()
     }
 
@@ -43,14 +51,13 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
 
     @objc public func connect(_ call: CAPPluginCall) {
         guard let connection = getSocket(call) else { return }
-        connection.connect()
-        call.resolve()
+        // Resolved once the socket is actually open, rejected if the attempt fails or times out.
+        connection.connect(call)
     }
 
     @objc public func disconnect(_ call: CAPPluginCall) {
         guard let connection = getSocket(call) else { return }
-        connection.disconnect()
-        call.resolve()
+        connection.disconnect(call)
     }
 
     @objc public func send(_ call: CAPPluginCall) {
@@ -59,8 +66,8 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
             call.reject("Must provide data to send")
             return
         }
-        guard let socket = connection.socket else {
-            call.reject("Socket is not available")
+        guard connection.connected, let socket = connection.socket else {
+            call.reject("Socket '\(connection.name)' is not connected")
             return
         }
         socket.write(string: message) {
@@ -74,6 +81,10 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
             return nil
         }
 
-        return connections[name]
+        guard let connection = connections[name] else {
+            call.reject("Socket '\(name)' doesnt exist")
+            return nil
+        }
+        return connection
     }
 }

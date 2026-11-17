@@ -8,8 +8,8 @@ Basic, cross-platform native websocket implementation for Capacitor/Ionic.
 > Martin Loeper ([nesto-software](https://github.com/nesto-software)) for his contributions.
 > Updated for Capacitor 8 and maintained by [Meecode](https://meecode.at).
 
-- iOS/Swift implmentation uses [StarScream](/https://github.com/daltoniam/Starscream)
-- Android/Java uses [NV/NeoVisionaries Websocket Client](/https://github.com/TakahikoKawasaki/nv-websocket-client)
+- iOS/Swift implementation uses [Starscream](https://github.com/daltoniam/Starscream)
+- Android/Java uses [OkHttp](https://square.github.io/okhttp/) WebSockets
 - Web implementation uses web native websockets
 
 ## Install
@@ -29,6 +29,28 @@ type EventSourceNames = "chat" | "live";
 addListener<EventSourceNames>("chat:message", ...);
 addListener<EventSourceNames>("live:message", ...);
 ```
+
+### Lifecycle and events
+
+Call `build` once per socket, then (optionally) `applyListeners`, register your listeners, and `connect`. `connect` resolves
+once the socket is open and rejects if the connection fails or takes longer than 5 seconds. A socket can be connected again
+after `disconnect()` or after the server closed it; calling `build` again with the same name replaces (and closes) the old one.
+
+All platforms emit the same events with the same payloads:
+
+| Event (`<name>:…`) | Payload |
+| ------------------ | ------- |
+| `connected`        | `{ headers }` (always empty on web) |
+| `message`          | `{ data }`; binary frames arrive base64 encoded as `{ data, binary: true }` |
+| `disconnected`     | `{ closedByServer, serverCloseFrame, clientCloseFrame }`, frames formatted `"<code> <reason>"` |
+| `statechange`      | `{ state }`: `CONNECTING`, `OPEN`, `CLOSING` or `CLOSED` |
+| `closeframe`       | `{ frame }`, when the server closes the connection |
+| `connecterror`     | `{ exception }`, when establishing the connection failed |
+| `error`            | `{ cause }`, for errors after the connection was established |
+| `senderror`        | `{ cause, frame }`, Android only: a message could not be queued |
+
+`messageerror`, `textmessage` and `textmessageerror` are deprecated and no longer emitted. Custom headers passed to `build`
+are ignored on web (browsers don't allow them), and only text can be sent.
 
 ## API
 
@@ -329,7 +351,7 @@ addListener<T extends string>(eventName: `${T}:textmessage`, listenerFunc: (even
 
 #### SendOptions
 
-<code><a href="#optionsbase">OptionsBase</a> & { data: any }</code>
+<code><a href="#optionsbase">OptionsBase</a> & { data: string }</code>
 
 
 #### ApplyListenersOptions
@@ -344,7 +366,7 @@ addListener<T extends string>(eventName: `${T}:textmessage`, listenerFunc: (even
 
 #### MessageEvent
 
-<code>{ data: string }</code>
+<code>{ data: string, binary?: boolean }</code>
 
 
 #### ConnectedEvent
