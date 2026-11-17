@@ -12,6 +12,20 @@ Basic, cross-platform native websocket implementation for Capacitor/Ionic.
 - Android/Java uses [OkHttp](https://square.github.io/okhttp/) WebSockets
 - Web implementation uses web native websockets
 
+## Why use this plugin?
+
+The browser `WebSocket` API works fine for many apps, but in more demanding Capacitor setups it falls short. This plugin
+runs the socket in native code (Starscream on iOS, OkHttp on Android) instead of inside the webview:
+
+- **Less webview overhead.** Connection handling, framing and I/O stay in native code, so they don't compete with your UI
+  and JavaScript for the webview's resources. This matters when you keep several sockets open or handle a lot of traffic.
+- **Native control over the connection.** You can send custom headers (for example for authentication) when connecting,
+  which the browser API doesn't allow, and the socket doesn't depend on the webview's networking stack.
+- **One API everywhere.** The same calls and events work on iOS, Android and web, so you can fall back to the browser
+  implementation for web builds without changing your app code.
+
+If the plain browser `WebSocket` meets your needs, you don't need this plugin.
+
 ## Install
 
 ```bash
