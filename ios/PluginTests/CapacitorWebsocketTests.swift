@@ -25,11 +25,11 @@ final class CallRecorder {
     var resolved = 0
     var rejections: [String] = []
 
-    func makeCall(_ method: String = "connect") -> CAPPluginCall {
+    func makeCall(_ method: String = "connect", options: [AnyHashable: Any] = [:]) -> CAPPluginCall {
         return CAPPluginCall(
             callbackId: UUID().uuidString,
             methodName: method,
-            options: [:],
+            options: options,
             success: { [weak self] _, _ in self?.resolved += 1 },
             error: { [weak self] error in self?.rejections.append(error?.message ?? "") }
         )
@@ -200,5 +200,170 @@ class CapacitorWebsocketTests: XCTestCase {
         wait(for: [expectation], timeout: 2)
         XCTAssertEqual(recorder.rejections.count, 1)
         XCTAssertTrue(names().contains("s:connecterror"))
+    }
+}
+
+
+/// Tests the plugin's public methods (argument validation, socket lookup, build/replace behaviour).
+class CapacitorWebsocketPluginTests: XCTestCase {
+    private var plugin: CapacitorWebsocketPlugin!
+    private var recorder: CallRecorder!
+
+    override func setUp() {
+        super.setUp()
+        plugin = CapacitorWebsocketPlugin()
+        recorder = CallRecorder()
+    }
+
+    private func call(_ method: String, _ options: [AnyHashable: Any] = [:]) -> CAPPluginCall {
+        return recorder.makeCall(method, options: options)
+    }
+
+    private func build(name: String = "s", url: String = "ws://localhost:1", headers: [String: Any]? = nil) {
+        var options: [AnyHashable: Any] = ["name": name, "url": url]
+        if let headers = headers { options["headers"] = headers }
+        plugin.build(call("build", options))
+    }
+
+    /// Replaces the real transport of a built connection with a mock.
+    @discardableResult
+    private func mockTransport(for name: String = "s", onRequest: ((URLRequest) -> Void)? = nil) -> () -> MockTransport? {
+        var created: MockTransport?
+        plugin.connections[name]?.makeTransport = { request in
+            onRequest?(request)
+            let transport = MockTransport()
+            created = transport
+            return transport
+        }
+        return { created }
+    }
+
+    // MARK: build
+
+    func testBuildRequiresAUrl() {
+        plugin.build(call("build", ["name": "s"]))
+        XCTAssertEqual(recorder.rejections, ["Must provide a socket URL"])
+        XCTAssertTrue(plugin.connections.isEmpty)
+    }
+
+    func testBuildRequiresAName() {
+        plugin.build(call("build", ["url": "ws://localhost:1"]))
+        XCTAssertEqual(recorder.rejections, ["Must provide a socket name"])
+        XCTAssertTrue(plugin.connections.isEmpty)
+    }
+
+    func testBuildRejectsNonStringHeaders() {
+        build(headers: ["X-Number": 5])
+        XCTAssertEqual(recorder.rejections.count, 1)
+        XCTAssertTrue(recorder.rejections[0].contains("X-Number"))
+        XCTAssertTrue(plugin.connections.isEmpty)
+    }
+
+    func testBuildCreatesAConnection() {
+        build()
+        XCTAssertEqual(recorder.resolved, 1)
+        XCTAssertNotNil(plugin.connections["s"])
+        XCTAssertFalse(plugin.connections["s"]!.connected)
+    }
+
+    func testBuildWithAnExistingNameReplacesTheConnection() {
+        build()
+        let first = plugin.connections["s"]
+        build()
+        XCTAssertEqual(plugin.connections.count, 1)
+        XCTAssertFalse(first === plugin.connections["s"])
+    }
+
+    func testReplacingAConnectionRejectsItsPendingConnect() {
+        build()
+        mockTransport()
+        let pending = CallRecorder()
+        plugin.connect(pending.makeCall("connect", options: ["name": "s"]))
+        build()
+        XCTAssertEqual(pending.rejections, ["Connection attempt aborted"])
+    }
+
+    // MARK: lookup
+
+    func testMethodsRejectAnUnknownSocket() {
+        for method in ["connect", "disconnect", "applyListeners"] {
+            let r = CallRecorder()
+            let c = r.makeCall(method, options: ["name": "nope"])
+            switch method {
+            case "connect": plugin.connect(c)
+            case "disconnect": plugin.disconnect(c)
+            default: plugin.applyListeners(c)
+            }
+            XCTAssertEqual(r.rejections, ["Socket 'nope' doesnt exist"], method)
+        }
+        let r = CallRecorder()
+        plugin.send(r.makeCall("send", options: ["name": "nope", "data": "x"]))
+        XCTAssertEqual(r.rejections, ["Socket 'nope' doesnt exist"])
+    }
+
+    func testMethodsRequireAName() {
+        let r = CallRecorder()
+        plugin.connect(r.makeCall("connect"))
+        plugin.send(r.makeCall("send", options: ["data": "x"]))
+        XCTAssertEqual(r.rejections, ["Must provide a socket name", "Must provide a socket name"])
+    }
+
+    func testApplyListenersResolvesForAKnownSocket() {
+        build()
+        let r = CallRecorder()
+        plugin.applyListeners(r.makeCall("applyListeners", options: ["name": "s"]))
+        XCTAssertEqual(r.resolved, 1)
+    }
+
+    // MARK: headers
+
+    func testHeadersFromBuildAreSentWithTheRequest() {
+        build(headers: ["Authorization": "Bearer abc", "X-Client": "test"])
+        var request: URLRequest?
+        mockTransport(onRequest: { request = $0 })
+        plugin.connect(call("connect", ["name": "s"]))
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "Authorization"), "Bearer abc")
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "X-Client"), "test")
+        XCTAssertEqual(request?.url?.absoluteString, "ws://localhost:1")
+    }
+
+    // MARK: send
+
+    func testSendRequiresData() {
+        build()
+        plugin.send(call("send", ["name": "s"]))
+        XCTAssertEqual(recorder.rejections.last, "Must provide data to send")
+    }
+
+    func testSendRejectsWhenNotConnected() {
+        build()
+        recorder = CallRecorder()
+        plugin.send(call("send", ["name": "s", "data": "x"]))
+        XCTAssertEqual(recorder.rejections, ["Socket 's' is not connected"])
+    }
+
+    func testSendWritesToTheTransportOnceConnected() {
+        build()
+        let transport = mockTransport()
+        plugin.connect(call("connect", ["name": "s"]))
+        transport()?.onEvent?(.connected([:]))
+        recorder = CallRecorder()
+
+        plugin.send(call("send", ["name": "s", "data": "ping"]))
+        XCTAssertEqual(transport()?.written, ["ping"])
+        XCTAssertEqual(recorder.resolved, 1)
+    }
+
+    func testSendRejectsAfterDisconnect() {
+        build()
+        let transport = mockTransport()
+        plugin.connect(call("connect", ["name": "s"]))
+        transport()?.onEvent?(.connected([:]))
+        plugin.disconnect(call("disconnect", ["name": "s"]))
+        recorder = CallRecorder()
+
+        plugin.send(call("send", ["name": "s", "data": "late"]))
+        XCTAssertEqual(recorder.rejections, ["Socket 's' is not connected"])
+        XCTAssertEqual(transport()?.written, [])
     }
 }

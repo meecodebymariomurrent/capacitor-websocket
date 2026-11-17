@@ -1,6 +1,8 @@
 // Minimal controllable WebSocket stand-in for testing the web implementation under Node.
 export class FakeWebSocket {
   static instances = [];
+  /** When false, close() leaves the socket CLOSING until the test calls serverClose() (like a slow peer). */
+  static autoClose = true;
   static CONNECTING = 0;
   static OPEN = 1;
   static CLOSING = 2;
@@ -39,7 +41,9 @@ export class FakeWebSocket {
   close(code = 1000, reason = "") {
     if (this.readyState === FakeWebSocket.CLOSED) return;
     this.readyState = FakeWebSocket.CLOSING;
-    queueMicrotask(() => this.serverClose(code, reason));
+    if (FakeWebSocket.autoClose) {
+      queueMicrotask(() => this.serverClose(code, reason));
+    }
   }
 
   // ---- test controls ----
@@ -61,6 +65,7 @@ export class FakeWebSocket {
 
 export function installFakeWebSocket() {
   FakeWebSocket.instances = [];
+  FakeWebSocket.autoClose = true;
   globalThis.WebSocket = FakeWebSocket;
 }
 

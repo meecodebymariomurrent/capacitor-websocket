@@ -38,6 +38,16 @@ public class CapacitorWebsocketPlugin: CAPPlugin {
             }
         }
 
+        // Starscream always writes "Host: host:port", even for the default port. OkHttp (Android) and browsers send
+        // the bare host there, and some gateways reject the handshake otherwise. A Host header set here is respected.
+        if req.value(forHTTPHeaderField: "Host") == nil, let host = socketURL.host {
+            let scheme = socketURL.scheme?.lowercased() ?? ""
+            let defaultPort = (scheme == "wss" || scheme == "https") ? 443 : 80
+            let hostName = host.contains(":") ? "[\(host)]" : host // URL.host strips the brackets of IPv6 literals
+            let hostValue = (socketURL.port == nil || socketURL.port == defaultPort) ? hostName : "\(hostName):\(socketURL.port!)"
+            req.setValue(hostValue, forHTTPHeaderField: "Host")
+        }
+
         connections[name]?.dispose()
         connections[name] = SocketConnection(name: name, plugin: self, request: req)
         call.resolve()

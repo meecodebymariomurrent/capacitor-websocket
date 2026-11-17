@@ -24,7 +24,6 @@ import okio.ByteString;
 @CapacitorPlugin(name = "CapacitorWebsocket")
 public class CapacitorWebsocket extends Plugin {
     private static final String TAG = "CapacitorWebsocket";
-    private static final int NORMAL_CLOSURE = 1000;
 
     // Websockets must not have a read timeout; pings keep idle connections alive and detect dead peers.
     private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
@@ -33,7 +32,7 @@ public class CapacitorWebsocket extends Plugin {
             .pingInterval(30, TimeUnit.SECONDS)
             .build();
 
-    private final Map<String, SocketConnection> sockets = new ConcurrentHashMap<>();
+    private final Map<String, SocketSession> sockets = new ConcurrentHashMap<>();
 
     @PluginMethod()
     public void build(PluginCall call) {
@@ -60,11 +59,16 @@ public class CapacitorWebsocket extends Plugin {
                     builder.addHeader(key, String.valueOf(headers.get(key)));
                 }
             }
+            Request request = builder.build();
 
-            SocketConnection previous = sockets.put(name, new SocketConnection(name, builder.build()));
+            SocketSession session = new SocketSession(
+                    name,
+                    listener -> OkHttpTransport.open(request, listener),
+                    (event, payload) -> notifyListeners(event, toJs(payload)));
+
+            SocketSession previous = sockets.put(name, session);
             if (previous != null) {
-                previous.detach();
-                settlePendingConnect(previous, "Connection attempt aborted", null);
+                previous.dispose();
             }
             call.resolve();
         } catch (Exception e) {
@@ -83,67 +87,42 @@ public class CapacitorWebsocket extends Plugin {
 
     @PluginMethod()
     public void connect(PluginCall call) {
-        SocketConnection conn = getSocket(call);
-        if (conn == null) {
+        SocketSession session = getSocket(call);
+        if (session == null) {
             return;
         }
 
-        synchronized (conn) {
-            if (conn.connected) {
+        // Resolved once the socket is actually open, rejected if the attempt fails or is aborted.
+        getBridge().saveCall(call);
+        session.connect(new SocketSession.ConnectCallback() {
+            @Override
+            public void resolve() {
                 call.resolve();
-                return;
-            }
-            if (conn.pendingConnect != null) {
-                call.reject("Socket '" + conn.name + "' is already connecting");
-                return;
+                getBridge().releaseCall(call);
             }
 
-            // A socket that is closing or dead is never reused; always start from a fresh one.
-            conn.detach();
-
-            conn.pendingConnect = call;
-            getBridge().saveCall(call);
-            emitState(conn, "CONNECTING");
-            conn.socket = CLIENT.newWebSocket(conn.request, new Listener(conn, conn.generation));
-        }
+            @Override
+            public void reject(String message, Exception cause) {
+                call.reject(message, cause);
+                getBridge().releaseCall(call);
+            }
+        });
     }
 
     @PluginMethod()
     public void disconnect(PluginCall call) {
-        SocketConnection conn = getSocket(call);
-        if (conn == null) {
+        SocketSession session = getSocket(call);
+        if (session == null) {
             return;
         }
-
-        WebSocket ws;
-        boolean abortedConnect = false;
-        synchronized (conn) {
-            ws = conn.socket;
-            if (ws != null && conn.connected) {
-                conn.connected = false;
-                conn.closedByClient = true;
-            } else if (ws != null) {
-                // Still connecting: abort the attempt.
-                conn.detach();
-                ws = null;
-                abortedConnect = true;
-            }
-        }
-        if (abortedConnect) {
-            settlePendingConnect(conn, "Connection attempt aborted", null);
-        }
-
-        if (ws != null) {
-            emitState(conn, "CLOSING");
-            ws.close(NORMAL_CLOSURE, null);
-        }
+        session.disconnect();
         call.resolve();
     }
 
     @PluginMethod()
     public void send(PluginCall call) {
-        SocketConnection conn = getSocket(call);
-        if (conn == null) {
+        SocketSession session = getSocket(call);
+        if (session == null) {
             return;
         }
 
@@ -153,217 +132,120 @@ public class CapacitorWebsocket extends Plugin {
             return;
         }
 
-        WebSocket ws = conn.socket;
-        if (ws == null || !conn.connected) {
-            call.reject("Socket '" + conn.name + "' is not connected");
-            return;
-        }
-
-        if (ws.send(data)) {
+        String error = session.send(data);
+        if (error == null) {
             call.resolve();
         } else {
-            JSObject ret = new JSObject();
-            ret.put("cause", "Message could not be enqueued (socket closing or queue full)");
-            ret.put("frame", data);
-            emit(conn, "senderror", ret);
-            call.reject("Couldnt send message");
+            call.reject(error);
         }
     }
 
     @Override
     protected void handleOnDestroy() {
-        for (SocketConnection conn : sockets.values()) {
-            conn.detach();
-            settlePendingConnect(conn, "Connection attempt aborted", null);
+        for (SocketSession session : sockets.values()) {
+            session.dispose();
         }
         sockets.clear();
         super.handleOnDestroy();
     }
 
-    private SocketConnection getSocket(PluginCall call) {
+    private SocketSession getSocket(PluginCall call) {
         String name = call.getString("name");
         if (name == null) {
             call.reject("Must provide a socket name");
             return null;
         }
-        SocketConnection conn = sockets.get(name);
-        if (conn == null) {
+        SocketSession session = sockets.get(name);
+        if (session == null) {
             call.reject(String.format("Socket '%s' doesnt exist", name));
         }
-        return conn;
+        return session;
     }
 
-    private void emit(SocketConnection conn, String event, JSObject data) {
-        notifyListeners(conn.name + ":" + event, data);
+    private static JSObject toJs(Map<String, Object> payload) {
+        JSObject object = new JSObject();
+        for (Map.Entry<String, Object> entry : payload.entrySet()) {
+            object.put(entry.getKey(), toJsValue(entry.getValue()));
+        }
+        return object;
     }
 
-    private void emitState(SocketConnection conn, String state) {
-        JSObject ret = new JSObject();
-        ret.put("state", state);
-        emit(conn, "statechange", ret);
+    @SuppressWarnings("unchecked")
+    private static Object toJsValue(Object value) {
+        if (value instanceof Map) {
+            return toJs((Map<String, Object>) value);
+        }
+        if (value instanceof List) {
+            JSArray array = new JSArray();
+            for (Object item : (List<?>) value) {
+                array.put(toJsValue(item));
+            }
+            return array;
+        }
+        return value;
     }
 
-    private void settlePendingConnect(SocketConnection conn, String error, Exception cause) {
-        PluginCall pending;
-        synchronized (conn) {
-            pending = conn.pendingConnect;
-            conn.pendingConnect = null;
-        }
-        if (pending == null) {
-            return;
-        }
-        if (error == null) {
-            pending.resolve();
-        } else {
-            pending.reject(error, cause);
-        }
-        getBridge().releaseCall(pending);
-    }
+    /** Adapts an OkHttp WebSocket to the {@link SocketSession.Transport} the session works with. */
+    private static final class OkHttpTransport extends WebSocketListener implements SocketSession.Transport {
+        private final SocketSession.TransportListener listener;
+        private volatile WebSocket webSocket;
 
-    private final class Listener extends WebSocketListener {
-        private final SocketConnection conn;
-        private final int generation;
-
-        Listener(SocketConnection conn, int generation) {
-            this.conn = conn;
-            this.generation = generation;
+        private OkHttpTransport(SocketSession.TransportListener listener) {
+            this.listener = listener;
         }
 
-        /**
-         * Events from a socket that was replaced or detached must not reach JS. A generation counter is used
-         * instead of comparing sockets because OkHttp may call back before newWebSocket() has returned.
-         */
-        private boolean isStale(WebSocket ws) {
-            return conn.generation != generation;
+        static OkHttpTransport open(Request request, SocketSession.TransportListener listener) {
+            OkHttpTransport transport = new OkHttpTransport(listener);
+            transport.webSocket = CLIENT.newWebSocket(request, transport);
+            return transport;
+        }
+
+        @Override
+        public boolean send(String text) {
+            return webSocket.send(text);
+        }
+
+        @Override
+        public void close(int code) {
+            webSocket.close(code, null);
+        }
+
+        @Override
+        public void cancel() {
+            webSocket.cancel();
         }
 
         @Override
         public void onOpen(WebSocket ws, Response response) {
-            if (isStale(ws)) {
-                return;
-            }
-            conn.connected = true;
-            conn.closedByClient = false;
-
-            JSObject headers = new JSObject();
-            for (Map.Entry<String, List<String>> entry : response.headers().toMultimap().entrySet()) {
-                headers.put(entry.getKey(), new JSArray(entry.getValue()));
-            }
-            JSObject ret = new JSObject();
-            ret.put("headers", headers);
-
-            emitState(conn, "OPEN");
-            emit(conn, "connected", ret);
-            settlePendingConnect(conn, null, null);
+            listener.onOpen(response.headers().toMultimap());
         }
 
         @Override
         public void onMessage(WebSocket ws, String text) {
-            if (isStale(ws)) {
-                return;
-            }
-            JSObject ret = new JSObject();
-            ret.put("data", text);
-            emit(conn, "message", ret);
+            listener.onText(text);
         }
 
         @Override
         public void onMessage(WebSocket ws, ByteString bytes) {
-            if (isStale(ws)) {
-                return;
-            }
-            // Same shape as iOS: binary frames are delivered base64 encoded.
-            JSObject ret = new JSObject();
-            ret.put("data", bytes.base64());
-            ret.put("binary", true);
-            emit(conn, "message", ret);
+            listener.onBinary(bytes.base64());
         }
 
         @Override
         public void onClosing(WebSocket ws, int code, String reason) {
-            if (isStale(ws)) {
-                return;
-            }
-            JSObject ret = new JSObject();
-            ret.put("frame", (code + " " + reason).trim());
-            emit(conn, "closeframe", ret);
-            emitState(conn, "CLOSING");
+            listener.onClosing(code, reason);
             // Complete the closing handshake.
             ws.close(code, null);
         }
 
         @Override
         public void onClosed(WebSocket ws, int code, String reason) {
-            if (isStale(ws)) {
-                return;
-            }
-            boolean byClient = conn.closedByClient;
-            conn.connected = false;
-            conn.socket = null;
-            conn.generation++;
-
-            JSObject ret = new JSObject();
-            ret.put("closedByServer", !byClient);
-            ret.put("serverCloseFrame", byClient ? "" : (code + " " + reason).trim());
-            ret.put("clientCloseFrame", byClient ? (code + " " + reason).trim() : "");
-            emitState(conn, "CLOSED");
-            emit(conn, "disconnected", ret);
+            listener.onClosed(code, reason);
         }
 
         @Override
         public void onFailure(WebSocket ws, Throwable t, Response response) {
-            if (isStale(ws)) {
-                return;
-            }
-            Logger.error(TAG, "Socket '" + conn.name + "' failed: " + t, t);
-            boolean wasConnected = conn.connected;
-            conn.connected = false;
-            conn.socket = null;
-            conn.generation++;
-
-            JSObject ret = new JSObject();
-            if (!wasConnected) {
-                ret.put("exception", String.valueOf(t));
-                emit(conn, "connecterror", ret);
-                settlePendingConnect(conn, "Couldnt connect socket: " + t.getMessage(),
-                        t instanceof Exception ? (Exception) t : new Exception(t));
-            } else {
-                ret.put("cause", String.valueOf(t));
-                emit(conn, "error", ret);
-            }
-
-            JSObject closed = new JSObject();
-            closed.put("closedByServer", wasConnected);
-            closed.put("serverCloseFrame", "");
-            closed.put("clientCloseFrame", "");
-            emitState(conn, "CLOSED");
-            emit(conn, "disconnected", closed);
-        }
-    }
-
-    private static final class SocketConnection {
-        final String name;
-        final Request request;
-        volatile WebSocket socket;
-        volatile boolean connected = false;
-        volatile boolean closedByClient = false;
-        volatile int generation = 0;
-        PluginCall pendingConnect;
-
-        SocketConnection(String name, Request request) {
-            this.name = name;
-            this.request = request;
-        }
-
-        /** Drops the current socket (if any) without notifying JS. */
-        synchronized void detach() {
-            WebSocket old = socket;
-            generation++;
-            socket = null;
-            connected = false;
-            if (old != null) {
-                old.cancel();
-            }
+            Logger.error(TAG, "WebSocket failed: " + t, t);
+            listener.onFailure(t);
         }
     }
 }

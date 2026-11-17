@@ -146,7 +146,7 @@ class SocketConnection {
             // Binary frames are delivered base64 encoded, like on Android and web.
             notify("message", ["data": data.base64EncodedString(), "binary": true])
         case .error(let error):
-            let description = error?.localizedDescription ?? "Unknown Error"
+            let description = SocketConnection.describe(error)
             if connected {
                 notify("error", ["cause": description])
             } else {
@@ -157,6 +157,20 @@ class SocketConnection {
         case .ping, .pong, .viabilityChanged, .reconnectSuggested, .peerClosed:
             break
         }
+    }
+
+    /// Starscream's HTTPUpgradeError hides the HTTP status in its localized description; include it so a rejected handshake is diagnosable.
+    static func describe(_ error: Error?) -> String {
+        guard let error = error else { return "Unknown Error" }
+        if let upgrade = error as? HTTPUpgradeError {
+            switch upgrade {
+            case .notAnUpgrade(let status, let headers):
+                return "Handshake rejected by server: HTTP \(status), headers \(headers)"
+            case .invalidData:
+                return "Handshake failed: invalid response data"
+            }
+        }
+        return error.localizedDescription
     }
 
     private func finishClosed(frame: String) {
